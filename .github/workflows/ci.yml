@@ -1,0 +1,175 @@
+name: CI - Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better analysis
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --configuration Release --no-restore /warnaserror
+
+    - name: Run unit tests
+      run: |
+        dotnet test \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --logger "trx;LogFileName=test-results.trx" \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage \
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+    - name: Generate coverage report
+      uses: danielpalme/ReportGenerator-GitHub-Action@5.2.0
+      with:
+        reports: 'coverage/**/coverage.opencover.xml'
+        targetdir: 'coverage-report'
+        reporttypes: 'HtmlInline;Cobertura;MarkdownSummary'
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage-report/
+
+    - name: Check code coverage threshold
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const xml2js = require('xml2js');
+
+          // Read Cobertura coverage file
+          const coverageXml = fs.readFileSync('coverage-report/Cobertura.xml', 'utf8');
+          const parser = new xml2js.Parser();
+
+          parser.parseString(coverageXml, (err, result) => {
+            if (err) {
+              console.log('Could not parse coverage report');
+              return;
+            }
+
+            const lineRate = parseFloat(result.coverage.$['line-rate']) * 100;
+            const branchRate = parseFloat(result.coverage.$['branch-rate']) * 100;
+
+            console.log(`Line Coverage: ${lineRate.toFixed(2)}%`);
+            console.log(`Branch Coverage: ${branchRate.toFixed(2)}%`);
+
+            const threshold = 80;
+
+            if (lineRate < threshold) {
+              core.setFailed(`Code coverage ${lineRate.toFixed(2)}% is below threshold ${threshold}%`);
+            }
+          });
+
+    - name: Comment PR with coverage
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let summary = '';
+
+          try {
+            summary = fs.readFileSync('coverage-report/Summary.md', 'utf8');
+          } catch (e) {
+            summary = 'Coverage report not available';
+          }
+
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 📊 Code Coverage Report\n\n${summary}\n\n` +
+                  `[View Full Report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+          });
+
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Test Results
+        path: 'coverage/*.trx'
+        reporter: dotnet-trx
+        fail-on-error: true
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Run dotnet format check
+      run: dotnet format --verify-no-changes --verbosity diagnostic
+
+    - name: Install security scanner
+      run: dotnet tool install --global security-scan
+
+    - name: Run security scan
+      run: security-scan *.sln --excl-proj=**/*Tests.csproj
+      continue-on-error: true
+
+  docker-build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker images
+      run: |
+        if [ -f "docker-compose.yml" ]; then
+          docker-compose build
+        else
+          echo "docker-compose.yml not found, skipping Docker build"
+        fi
