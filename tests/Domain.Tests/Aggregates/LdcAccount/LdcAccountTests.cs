@@ -222,7 +222,7 @@ public class LdcAccountTests
     public void Create_WithNullTenantId_ThrowsArgumentNullException()
     {
         // Arrange & Act
-        var act = () => LdcAccount.Create(null!, LdcProvider.PGE, "Test Account", "user", "pass");
+        var act = () => LdcAccountAggregate.Create(null!, LdcProvider.PGE, "Test Account", "user", "pass");
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
