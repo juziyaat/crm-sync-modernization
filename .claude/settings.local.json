@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe:*)",
+      "Bash(PROJECT_ID=\"PVT_kwHOCjQqls4BPFSG\")",
+      "Bash(for issue_num in 1 2 3 4 5)",
+      "Bash(do gh project item-add $PROJECT_ID --owner @me --url \"https://github.com/juziyaat/crm-sync-modernization/issues/$issue_num\")",
+      "Bash(done)",
+      "Bash(do gh project item-add 2 --owner @me --url \"https://github.com/juziyaat/crm-sync-modernization/issues/$issue_num\")",
+      "Bash(for issue_num in {6..25})",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet sln add:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)"
+    ]
+  }
+}
