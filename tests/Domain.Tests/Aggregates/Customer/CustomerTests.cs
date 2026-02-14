@@ -4,6 +4,7 @@ using CCA.Sync.Domain.Events;
 using CCA.Sync.Domain.ValueObjects;
 using FluentAssertions;
 using Xunit;
+using CustomerAggregate = CCA.Sync.Domain.Aggregates.Customer.Customer;
 
 namespace CCA.Sync.Domain.Tests.Aggregates.Customer;
 
@@ -62,7 +63,7 @@ public class CustomerTests
         var email = CreateEmailAddress();
 
         // Act
-        var result = Customer.Create(tenantId, name, email);
+        var result = CustomerAggregate.Create(tenantId, name, email);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -88,7 +89,7 @@ public class CustomerTests
         var address = CreateAddress();
 
         // Act
-        var result = Customer.Create(tenantId, name, email, phone, address);
+        var result = CustomerAggregate.Create(tenantId, name, email, phone, address);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -104,8 +105,11 @@ public class CustomerTests
         var name = CreateCustomerName();
         var email = CreateEmailAddress();
 
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => Customer.Create(null!, name, email));
+        // Act
+        var act = () => CustomerAggregate.Create(null!, name, email);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
@@ -115,8 +119,11 @@ public class CustomerTests
         var tenantId = CreateTenantId();
         var email = CreateEmailAddress();
 
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => Customer.Create(tenantId, null!, email));
+        // Act
+        var act = () => CustomerAggregate.Create(tenantId, null!, email);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
@@ -126,8 +133,11 @@ public class CustomerTests
         var tenantId = CreateTenantId();
         var name = CreateCustomerName();
 
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => Customer.Create(tenantId, name, null!));
+        // Act
+        var act = () => CustomerAggregate.Create(tenantId, name, null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
     }
 
     // Utility Account Tests
@@ -135,7 +145,7 @@ public class CustomerTests
     public void AddUtilityAccount_WithValidParameters_SucceedsAndRaisesEvent()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var accountNumber = CreateAccountNumber();
         var meterNumber = CreateMeterNumber();
         var address = CreateAddress();
@@ -161,7 +171,7 @@ public class CustomerTests
     public void AddUtilityAccount_WithoutOptionalFields_Succeeds()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var accountNumber = CreateAccountNumber();
 
         // Act
@@ -178,7 +188,7 @@ public class CustomerTests
     public void AddUtilityAccount_WithDuplicateAccountNumber_Fails()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var accountNumber = CreateAccountNumber("ACC123");
 
         customer.AddUtilityAccount(accountNumber, UtilityProvider.PGE);
@@ -196,17 +206,20 @@ public class CustomerTests
     public void AddUtilityAccount_WithNullAccountNumber_Fails()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => customer.AddUtilityAccount(null!, UtilityProvider.PGE));
+        // Act
+        var act = () => customer.AddUtilityAccount(null!, UtilityProvider.PGE);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
     public void RemoveUtilityAccount_WithValidId_SucceedsAndRaisesEvent()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var account = customer.AddUtilityAccount(CreateAccountNumber(), UtilityProvider.PGE).Value;
 
         customer.ClearDomainEvents();
@@ -224,7 +237,7 @@ public class CustomerTests
     public void RemoveUtilityAccount_WithInvalidId_Fails()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
         // Act
         var result = customer.RemoveUtilityAccount(Guid.NewGuid());
@@ -238,7 +251,7 @@ public class CustomerTests
     public void GetUtilityAccount_WithValidId_ReturnsAccount()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var account = customer.AddUtilityAccount(CreateAccountNumber(), UtilityProvider.PGE).Value;
 
         // Act
@@ -253,7 +266,7 @@ public class CustomerTests
     public void GetUtilityAccount_WithInvalidId_ReturnsNull()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
         // Act
         var result = customer.GetUtilityAccount(Guid.NewGuid());
@@ -266,7 +279,7 @@ public class CustomerTests
     public void GetUtilityAccountByNumber_WithValidNumber_ReturnsAccount()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var accountNumber = CreateAccountNumber("ACC999");
         var account = customer.AddUtilityAccount(accountNumber, UtilityProvider.SDG_E).Value;
 
@@ -282,7 +295,7 @@ public class CustomerTests
     public void GetUtilityAccountByNumber_WithInvalidNumber_ReturnsNull()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
         // Act
         var result = customer.GetUtilityAccountByNumber(CreateAccountNumber("INVALID"));
@@ -296,7 +309,7 @@ public class CustomerTests
     public void UpdateContactInfo_WithNewEmail_SucceedsAndRaisesEvent()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress("old@example.com")).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress("old@example.com")).Value;
         var newEmail = CreateEmailAddress("new@example.com");
         customer.ClearDomainEvents();
 
@@ -313,7 +326,7 @@ public class CustomerTests
     public void UpdateContactInfo_WithNewPhone_SucceedsAndRaisesEvent()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var newPhone = CreatePhoneNumber("5559876543");
         customer.ClearDomainEvents();
 
@@ -330,7 +343,7 @@ public class CustomerTests
     public void UpdateContactInfo_WithNewAddress_SucceedsAndRaisesEvent()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var newAddress = CreateAddress("456 Market St", "Los Angeles", "CA", "90001");
         customer.ClearDomainEvents();
 
@@ -348,7 +361,7 @@ public class CustomerTests
     {
         // Arrange
         var email = CreateEmailAddress();
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), email).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), email).Value;
         customer.ClearDomainEvents();
 
         // Act
@@ -364,7 +377,7 @@ public class CustomerTests
     public void MarkAsSynced_UpdatesStatusAndRaisesEvent()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         customer.AddUtilityAccount(CreateAccountNumber(), UtilityProvider.PGE);
         customer.ClearDomainEvents();
 
@@ -381,7 +394,7 @@ public class CustomerTests
     public void MarkSyncAsFailed_UpdatesStatusAndRaisesEvent()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var reason = "Connection timeout";
         customer.ClearDomainEvents();
 
@@ -397,17 +410,20 @@ public class CustomerTests
     public void MarkSyncAsFailed_WithNullReason_Fails()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
-        // Act & Assert
-        _ = Assert.Throws<ArgumentNullException>(() => customer.MarkSyncAsFailed(null!));
+        // Act
+        var act = () => customer.MarkSyncAsFailed(null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
     public void MarkSyncAsInProgress_UpdatesStatus()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
         // Act
         customer.MarkSyncAsInProgress();
@@ -421,7 +437,7 @@ public class CustomerTests
     public void GetSyncedAccountCount_ReturnsCorrectCount()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var account1 = customer.AddUtilityAccount(CreateAccountNumber("ACC001"), UtilityProvider.PGE).Value;
         var account2 = customer.AddUtilityAccount(CreateAccountNumber("ACC002"), UtilityProvider.SCE).Value;
         var account3 = customer.AddUtilityAccount(CreateAccountNumber("ACC003"), UtilityProvider.SDG_E).Value;
@@ -440,7 +456,7 @@ public class CustomerTests
     public void GetFailedAccountCount_ReturnsCorrectCount()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var account1 = customer.AddUtilityAccount(CreateAccountNumber("ACC001"), UtilityProvider.PGE).Value;
         var account2 = customer.AddUtilityAccount(CreateAccountNumber("ACC002"), UtilityProvider.SCE).Value;
 
@@ -457,7 +473,7 @@ public class CustomerTests
     public void AreAllAccountsSynced_WithAllSynced_ReturnsTrue()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var account1 = customer.AddUtilityAccount(CreateAccountNumber("ACC001"), UtilityProvider.PGE).Value;
         var account2 = customer.AddUtilityAccount(CreateAccountNumber("ACC002"), UtilityProvider.SCE).Value;
 
@@ -475,7 +491,7 @@ public class CustomerTests
     public void AreAllAccountsSynced_WithPartialSync_ReturnsFalse()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         var account1 = customer.AddUtilityAccount(CreateAccountNumber("ACC001"), UtilityProvider.PGE).Value;
         var account2 = customer.AddUtilityAccount(CreateAccountNumber("ACC002"), UtilityProvider.SCE).Value;
 
@@ -492,7 +508,7 @@ public class CustomerTests
     public void AreAllAccountsSynced_WithNoAccounts_ReturnsFalse()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
         // Act
         var result = customer.AreAllAccountsSynced();
@@ -505,7 +521,7 @@ public class CustomerTests
     public void HasUtilityAccounts_WithAccounts_ReturnsTrue()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         customer.AddUtilityAccount(CreateAccountNumber(), UtilityProvider.PGE);
 
         // Act
@@ -519,7 +535,7 @@ public class CustomerTests
     public void HasUtilityAccounts_WithoutAccounts_ReturnsFalse()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
         // Act
         var result = customer.HasUtilityAccounts();
@@ -533,7 +549,7 @@ public class CustomerTests
     public void Customer_CanHaveMultipleUtilityAccounts()
     {
         // Arrange & Act
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
 
         for (int i = 0; i < 5; i++)
         {
@@ -550,20 +566,23 @@ public class CustomerTests
     public void Customer_UtilityAccountsAreReadOnly()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         customer.AddUtilityAccount(CreateAccountNumber(), UtilityProvider.PGE);
 
-        // Act & Assert
+        // Act
         var accounts = customer.UtilityAccounts;
-        _ = Assert.Throws<NotSupportedException>(() => accounts.Add(
-            UtilityAccount.Create(CreateAccountNumber("ACC999"), UtilityProvider.SCE).Value));
+        var act = () => ((ICollection<UtilityAccount>)accounts).Add(
+            UtilityAccount.Create(CreateAccountNumber("ACC999"), UtilityProvider.SCE).Value);
+
+        // Assert
+        act.Should().Throw<NotSupportedException>();
     }
 
     [Fact]
     public void Customer_DomainEventsCanBeCleared()
     {
         // Arrange
-        var customer = Customer.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
+        var customer = CustomerAggregate.Create(CreateTenantId(), CreateCustomerName(), CreateEmailAddress()).Value;
         customer.AddUtilityAccount(CreateAccountNumber(), UtilityProvider.PGE);
 
         // Act
